@@ -7,10 +7,6 @@ TRUSTEDGE_DIR="${TRUSTEDGE_DIR:-$HOME/trustedge}"
 ECR_REGISTRY="${ECR_REGISTRY:-804012660077.dkr.ecr.us-east-1.amazonaws.com}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 
-if [ -z "${TRUSTEDGE_AGENT_API_IMAGE:-}" ] && [ -n "${TRUSTTWIN_API_IMAGE:-}" ]; then
-  export TRUSTEDGE_AGENT_API_IMAGE="$TRUSTTWIN_API_IMAGE"
-fi
-
 if [ -z "${TRUSTEDGE_AGENT_API_IMAGE:-}" ]; then
   echo "ERROR: TRUSTEDGE_AGENT_API_IMAGE is required (full ECR image ref with tag)" >&2
   exit 1
@@ -37,8 +33,6 @@ bash scripts/ec2-sync-agent-api.sh
 export TRUSTEDGE_AGENT_ENROLL_TOKEN
 if sudo test -f /etc/trustedge/agent-enroll.token; then
   TRUSTEDGE_AGENT_ENROLL_TOKEN="$(sudo cat /etc/trustedge/agent-enroll.token | tr -d '\r\n')"
-elif sudo test -f /etc/trustedge/trusttwin-enroll.token; then
-  TRUSTEDGE_AGENT_ENROLL_TOKEN="$(sudo cat /etc/trustedge/trusttwin-enroll.token | tr -d '\r\n')"
 else
   echo "ERROR: enroll token not found at /etc/trustedge/agent-enroll.token" >&2
   exit 1

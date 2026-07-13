@@ -1,6 +1,6 @@
 # TrustEdge Agent API
 
-Ingest API for the [TrustEdge](https://github.com/TrustEdgeOrg/TrustEdge) security observability platform. Endpoint agents POST telemetry here; production mode mirrors to Redis and publishes to Kafka for detection.
+Ingest API for the [TrustEdge](https://github.com/TrustEdgeOrg/TrustEdge) security observability platform. Endpoint agents POST telemetry here; optionally publishes to Kafka for detection.
 
 Pairs with [TrustEdge-Agent](https://github.com/TrustEdgeOrg/TrustEdge-Agent) (cross-platform endpoint agent).
 
@@ -20,10 +20,9 @@ pip install -r requirements-dev.txt
 python -m app.main
 ```
 
-With Redis and Kafka (TrustEdge dev stack):
+With Kafka (optional):
 
 ```bash
-export REDIS_URL=redis://127.0.0.1:6379/0
 export KAFKA_BROKERS=127.0.0.1:9092
 python -m app.main
 ```
@@ -36,9 +35,12 @@ export TRUSTEDGE_AGENT_API_URL=http://127.0.0.1:8080
 go run ./cmd/trustedge-agent
 ```
 
+## Build
+
 Requires **Python 3.12+**.
 
 ```bash
+pip install -r requirements-dev.txt
 make test
 ```
 
@@ -54,8 +56,7 @@ See [aws/README.md](aws/README.md) for secrets and one-time setup.
 app/                       # FastAPI ingest service
   main.py                  # App entry + uvicorn
   routes.py                # HTTP handlers
-  store.py                 # Memory, disk, Redis, Kafka
-  redis_live.py            # TrustEdge Redis contract
+  store.py                 # Memory, disk, Kafka
   kafka_publisher.py       # Event publisher
 docs/                      # API reference
 tests/                     # pytest suite

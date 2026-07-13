@@ -34,7 +34,7 @@ Add `TrustEdgeOrg/TrustEdge-Agent-API` to the OIDC trust policy so it can assume
 
 ## EC2 prerequisites
 
-- TrustEdge deployed at `~/trustedge` (backend, redis, redpanda running).
+- TrustEdge deployed at `~/trustedge` (backend, redpanda running).
 - EC2 instance role can call `aws ecr get-login-password` and pull from ECR.
 - Security group allows SSH (port 22) from GitHub Actions runners.
 

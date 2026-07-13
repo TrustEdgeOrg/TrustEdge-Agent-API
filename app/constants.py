@@ -1,4 +1,4 @@
-"""Shared constants for ingest API and TrustEdge Redis contract."""
+"""Shared constants for ingest API."""
 
 MAX_EVENTS_PER_BATCH = 100
 
@@ -29,10 +29,5 @@ ALLOWED_EVENT_TYPES = frozenset(
         TYPE_PROCESS_EXIT,
     }
 )
-
-REDIS_DEVICES_KEY = "twin:devices"
-REDIS_DEVICE_TOKENS_KEY = "twin:device_tokens"
-REDIS_LATEST_KEY_FMT = "twin:device:{device_id}:latest"
-REDIS_EVENTS_KEY_FMT = "twin:device:{device_id}:events"
 
 CONTENT_ENCODING_ZSTD = "zstd"

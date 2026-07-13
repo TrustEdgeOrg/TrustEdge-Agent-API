@@ -8,19 +8,12 @@ from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-def _env(primary: str, legacy: str = "", fallback: str = "") -> str:
-    value = os.getenv(primary, "").strip()
-    if value:
-        return value
-    if legacy:
-        value = os.getenv(legacy, "").strip()
-        if value:
-            return value
-    return fallback
+def _env(primary: str, fallback: str = "") -> str:
+    return os.getenv(primary, "").strip() or fallback
 
 
-def _env_bool(primary: str, legacy: str = "") -> bool:
-    raw = _env(primary, legacy).lower()
+def _env_bool(primary: str) -> bool:
+    raw = _env(primary).lower()
     return raw in {"1", "true", "yes", "on"}
 
 
@@ -32,39 +25,31 @@ class Settings(BaseSettings):
     data_dir: str = Field(default="data", validation_alias="TRUSTEDGE_AGENT_DATA_DIR")
     max_events: int = 500
     production: bool = Field(default=False, validation_alias="TRUSTEDGE_AGENT_PRODUCTION")
-    redis_url: str = ""
     kafka_brokers: str = Field(default="", validation_alias="KAFKA_BROKERS")
     kafka_topic: str = Field(default="trustedge.agent.events", validation_alias="KAFKA_TOPIC")
     persist_files_override: Optional[str] = None
 
     @model_validator(mode="before")
     @classmethod
-    def load_legacy_env(cls, data: dict) -> dict:
+    def load_env_defaults(cls, data: dict) -> dict:
         if not isinstance(data, dict):
             return data
         out = dict(data)
         if "listen" not in out:
-            out["listen"] = _env("TRUSTEDGE_AGENT_LISTEN", "TRUSTTWIN_LISTEN", ":8080")
+            out["listen"] = _env("TRUSTEDGE_AGENT_LISTEN", ":8080")
         if "enroll_token" not in out:
-            out["enroll_token"] = _env("TRUSTEDGE_AGENT_ENROLL_TOKEN", "TRUSTTWIN_ENROLL_TOKEN")
+            out["enroll_token"] = _env("TRUSTEDGE_AGENT_ENROLL_TOKEN")
         if "data_dir" not in out:
-            out["data_dir"] = _env("TRUSTEDGE_AGENT_DATA_DIR", "TRUSTTWIN_DATA_DIR", "data")
+            out["data_dir"] = _env("TRUSTEDGE_AGENT_DATA_DIR", "data")
         if "production" not in out:
-            out["production"] = _env_bool("TRUSTEDGE_AGENT_PRODUCTION", "TRUSTTWIN_PRODUCTION")
-        if "redis_url" not in out:
-            redis_url = _env("TRUSTEDGE_AGENT_REDIS_URL", "TRUSTTWIN_REDIS_URL")
-            if not redis_url:
-                redis_url = _env("REDIS_URL")
-            out["redis_url"] = redis_url
+            out["production"] = _env_bool("TRUSTEDGE_AGENT_PRODUCTION")
         if "kafka_brokers" not in out:
             out["kafka_brokers"] = _env("KAFKA_BROKERS")
         if "kafka_topic" not in out:
             out["kafka_topic"] = _env("KAFKA_TOPIC", fallback="trustedge.agent.events")
         if "persist_files_override" not in out:
-            for key in ("TRUSTEDGE_AGENT_PERSIST_FILES", "TRUSTTWIN_PERSIST_FILES"):
-                if key in os.environ:
-                    out["persist_files_override"] = os.environ[key]
-                    break
+            if "TRUSTEDGE_AGENT_PERSIST_FILES" in os.environ:
+                out["persist_files_override"] = os.environ["TRUSTEDGE_AGENT_PERSIST_FILES"]
         return out
 
     @field_validator("production", mode="before")
@@ -83,17 +68,13 @@ class Settings(BaseSettings):
                 return True
             if value in {"0", "false", "no", "off"}:
                 return False
-        return not self.production
+        return True
 
     def validate_production(self) -> None:
         if not self.production:
             return
         if not self.enroll_token.strip():
             raise ValueError("production requires TRUSTEDGE_AGENT_ENROLL_TOKEN on the API")
-        if not self.redis_url.strip():
-            raise ValueError(
-                "production requires REDIS_URL or TRUSTEDGE_AGENT_REDIS_URL (disk persistence is disabled)"
-            )
 
     def uvicorn_bind(self) -> tuple[str, int]:
         listen = self.listen.strip() or ":8080"

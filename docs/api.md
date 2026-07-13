@@ -1,6 +1,6 @@
 # TrustEdge Agent API
 
-Ingest API for the [TrustEdge](https://github.com/TrustEdgeOrg/TrustEdge) security observability platform. Agents POST endpoint telemetry; production mode mirrors to Redis and publishes to Kafka for detection.
+Ingest API for the [TrustEdge](https://github.com/TrustEdgeOrg/TrustEdge) security observability platform. Agents POST endpoint telemetry; optionally publishes to Kafka for detection.
 
 Base URL example: `http://127.0.0.1:8080`
 
@@ -193,7 +193,7 @@ EDR-lite process visibility (metadata only).
 
 When `TRUSTEDGE_AGENT_PRODUCTION=1`:
 
-- API refuses to start without `TRUSTEDGE_AGENT_ENROLL_TOKEN` and `REDIS_URL`.
+- API refuses to start without `TRUSTEDGE_AGENT_ENROLL_TOKEN`.
 - Agents refuse to start without `TRUSTEDGE_AGENT_ENROLL_TOKEN` and an `https://` API URL.
 - Device tokens are stored in the OS keyring, not `state.json`.
 

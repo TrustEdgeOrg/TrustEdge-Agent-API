@@ -15,7 +15,6 @@ from app.config import Settings
 from app.constants import TYPE_CLIENT_DETAILS
 from app.kafka_publisher import KafkaPublisher, NullPublisher, Publisher
 from app.models import ClientView, Event, RegisterRequest, RegisterResponse
-from app.redis_live import RedisLive
 
 LOG = logging.getLogger("trustedge-agent-api")
 
@@ -44,7 +43,6 @@ class EventStore:
         self,
         settings: Settings,
         *,
-        redis_live: RedisLive | None = None,
         publisher: Publisher | None = None,
     ) -> None:
         self._settings = settings
@@ -55,36 +53,24 @@ class EventStore:
         self._devices: dict[str, DeviceRecord] = {}
         self._tokens: dict[str, str] = {}
         self._events: dict[str, list[Event]] = {}
-        self._redis = redis_live
         self._publisher = publisher or NullPublisher()
 
         if not self._disable_disk:
             self._data_dir.mkdir(parents=True, exist_ok=True)
             self._load_disk()
-        if self._redis is not None and self._disable_disk:
-            self._load_from_redis()
 
     @classmethod
     def from_settings(cls, settings: Settings) -> EventStore:
-        redis_live: RedisLive | None = None
-        if settings.redis_url.strip():
-            redis_live = RedisLive(settings.redis_url.strip(), settings.max_events)
         publisher: Publisher = NullPublisher()
         if settings.kafka_brokers.strip():
             publisher = KafkaPublisher(settings.kafka_brokers.strip(), settings.kafka_topic)
-        return cls(settings, redis_live=redis_live, publisher=publisher)
-
-    @property
-    def redis_enabled(self) -> bool:
-        return self._redis is not None
+        return cls(settings, publisher=publisher)
 
     @property
     def kafka_enabled(self) -> bool:
         return not isinstance(self._publisher, NullPublisher)
 
     def close(self) -> None:
-        if self._redis is not None:
-            self._redis.close()
         self._publisher.close()
 
     def _load_disk(self) -> None:
@@ -117,17 +103,6 @@ class EventStore:
                 events.append(event)
                 if len(events) > self._max_events:
                     self._events[event.device_id] = events[-self._max_events :]
-
-    def _load_from_redis(self) -> None:
-        if self._redis is None:
-            return
-        for item in self._redis.load_device_auth():
-            rec = self._record_from_dict(item)
-            if not rec.device_id:
-                continue
-            self._devices[rec.device_id] = rec
-            if rec.device_token:
-                self._tokens[rec.device_token] = rec.device_id
 
     @staticmethod
     def _record_from_dict(data: dict[str, Any]) -> DeviceRecord:
@@ -188,11 +163,6 @@ class EventStore:
                 rec.last_details["agent_version"] = req.agent_version
 
             self._persist_devices()
-            if self._redis is not None:
-                self._redis.upsert_register(device_id, rec.last_details, now)
-                if self._disable_disk:
-                    self._redis.save_device_auth(rec.to_dict())
-
             return RegisterResponse(device_id=device_id, device_token=rec.device_token)
 
     def device_id_for_token(self, token: str) -> str | None:
@@ -220,10 +190,6 @@ class EventStore:
 
             self._append_event(event)
             self._persist_devices()
-            if self._redis is not None:
-                self._redis.upsert_event(event)
-                if self._disable_disk:
-                    self._redis.save_device_auth(rec.to_dict())
             self._publisher.publish_event(event)
 
     def get_client(self, device_id: str, limit: int = 50) -> ClientView | None:

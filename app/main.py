@@ -18,12 +18,10 @@ async def lifespan(_app: FastAPI):
     settings.validate_production()
     store = EventStore.from_settings(settings)
     set_store(store)
-    redis_note = "on" if store.redis_enabled else "off"
     kafka_note = "on" if store.kafka_enabled else "off"
     LOG.info(
-        "listening (disk=%s redis=%s kafka=%s)",
+        "listening (disk=%s kafka=%s)",
         settings.persist_files(),
-        redis_note,
         kafka_note,
     )
     try:

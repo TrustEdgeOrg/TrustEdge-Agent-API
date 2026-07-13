@@ -6,7 +6,7 @@ __pycache__/
 .venv/
 venv/
 
-# Legacy Go artifacts
+# Binaries
 /bin/
 /trustedge-agent-api
 

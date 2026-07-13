@@ -131,6 +131,6 @@ jobs:
             docker pull "$TRUSTEDGE_AGENT_API_IMAGE"
             chmod +x scripts/ec2-sync-agent-api.sh
             bash scripts/ec2-sync-agent-api.sh
-            export TRUSTEDGE_AGENT_ENROLL_TOKEN="$(sudo cat /etc/trustedge/agent-enroll.token 2>/dev/null || sudo cat /etc/trustedge/trusttwin-enroll.token | tr -d '\r\n')"
+            export TRUSTEDGE_AGENT_ENROLL_TOKEN="$(sudo cat /etc/trustedge/agent-enroll.token | tr -d '\r\n')"
             COMPOSE_PROFILES=agent docker compose -f docker-compose.yml up -d --remove-orphans trustedge-agent-api
             COMPOSE_PROFILES=agent docker compose -f docker-compose.yml ps trustedge-agent-api
