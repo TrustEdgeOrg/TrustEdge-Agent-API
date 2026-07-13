@@ -16,7 +16,8 @@ Pairs with [TrustEdge-Agent](https://github.com/TrustEdgeOrg/TrustEdge-Agent) (c
 
 ```bash
 cd ~/Desktop/TrustEdge-Agent-API
-go run ./cmd/trustedge-agent-api
+pip install -r requirements-dev.txt
+python -m app.main
 ```
 
 With Redis and Kafka (TrustEdge dev stack):
@@ -24,7 +25,7 @@ With Redis and Kafka (TrustEdge dev stack):
 ```bash
 export REDIS_URL=redis://127.0.0.1:6379/0
 export KAFKA_BROKERS=127.0.0.1:9092
-go run ./cmd/trustedge-agent-api
+python -m app.main
 ```
 
 Point the agent at this API:
@@ -35,10 +36,9 @@ export TRUSTEDGE_AGENT_API_URL=http://127.0.0.1:8080
 go run ./cmd/trustedge-agent
 ```
 
-## Build
+Requires **Python 3.12+**.
 
 ```bash
-make build   # → bin/trustedge-agent-api
 make test
 ```
 
@@ -51,9 +51,12 @@ See [aws/README.md](aws/README.md) for secrets and one-time setup.
 ## Project layout
 
 ```text
-cmd/trustedge-agent-api/   # HTTP ingest service
-internal/server/           # Route handlers
-internal/store/            # Memory, disk, Redis, Kafka
-internal/kafka/            # Event publisher
+app/                       # FastAPI ingest service
+  main.py                  # App entry + uvicorn
+  routes.py                # HTTP handlers
+  store.py                 # Memory, disk, Redis, Kafka
+  redis_live.py            # TrustEdge Redis contract
+  kafka_publisher.py       # Event publisher
 docs/                      # API reference
+tests/                     # pytest suite
 ```

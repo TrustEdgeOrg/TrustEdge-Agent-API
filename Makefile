@@ -1,17 +1,16 @@
 .PHONY: build run test fmt docker-image
 
 build:
-	mkdir -p bin
-	go build -buildvcs=false -o bin/trustedge-agent-api ./cmd/trustedge-agent-api
+	@echo "Python service — use docker-image or run directly"
 
 run:
-	go run ./cmd/trustedge-agent-api
+	python -m app.main
 
 test:
-	go test ./...
+	pytest -q
 
 fmt:
-	go fmt ./...
+	ruff check app tests || true
 
 docker-image:
 	docker build -t trustedge-agent-api .

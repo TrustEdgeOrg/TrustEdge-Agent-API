@@ -1,13 +1,14 @@
-# Binaries
+# Binaries / runtime
+/data/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Legacy Go artifacts
 /bin/
 /trustedge-agent-api
-/trusttwin-api
-*.exe
-*.test
-*.out
-
-# Data / runtime
-/data/
 
 # IDE / OS
 .DS_Store
