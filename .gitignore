@@ -1,0 +1,20 @@
+# Binaries
+/bin/
+/trustedge-agent-api
+/trusttwin-api
+*.exe
+*.test
+*.out
+
+# Data / runtime
+/data/
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Env
+.env
+.env.local
