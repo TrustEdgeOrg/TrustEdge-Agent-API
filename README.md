@@ -53,11 +53,23 @@ See [aws/README.md](aws/README.md) for secrets and one-time setup.
 ## Project layout
 
 ```text
-app/                       # FastAPI ingest service
+app/
   main.py                  # App entry + uvicorn
-  routes.py                # HTTP handlers
-  store.py                 # Memory, disk, Kafka
-  kafka_publisher.py       # Event publisher
+  config.py                # Settings
+  dependencies.py          # FastAPI dependencies (store, settings)
+  api/
+    errors.py              # Plain-text error responses
+    ingest.py              # Event body decoding (JSON, zstd)
+    v1/                    # HTTP routes (/healthz, /v1/*)
+  models/
+    schemas.py             # Pydantic request/response models
+  store/
+    event_store.py         # Registration + event ingestion
+    disk.py                # devices.json / events.jsonl persistence
+    device_record.py       # Device state dataclass
+  publishers/
+    kafka.py               # Optional Kafka publisher
+  core/                    # auth, codec, clock, idgen, constants
 docs/                      # API reference
 tests/                     # pytest suite
 ```
