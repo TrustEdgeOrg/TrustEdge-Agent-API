@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import zstandard as zstd
 
-from app.constants import CONTENT_ENCODING_ZSTD
+from app.core.constants import CONTENT_ENCODING_ZSTD
 
 
 def is_zstd(content_encoding: str | None) -> bool:

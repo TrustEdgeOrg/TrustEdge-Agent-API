@@ -1,10 +1,14 @@
-# TrustEdge Agent API
+# <img src="assets/icons/api.svg" width="28" height="28" align="absmiddle" alt="" /> TrustEdge Agent API
 
-Ingest API for the [TrustEdge](https://github.com/TrustEdgeOrg/TrustEdge) security observability platform. Agents POST endpoint telemetry; production mode mirrors to Redis and publishes to Kafka for detection.
+Ingest API for the [TrustEdge](https://github.com/TrustEdgeOrg/TrustEdge) security observability platform. Agents POST endpoint telemetry; the API can optionally publish to Kafka for detection.
 
-Base URL example: `http://127.0.0.1:8080`
+Pairs with [TrustEdge-Agent](https://github.com/TrustEdgeOrg/TrustEdge-Agent).
 
-## Event envelope
+> Local base URL example: `http://127.0.0.1:8080`
+
+---
+
+## <img src="assets/icons/layout.svg" width="22" height="22" align="absmiddle" alt="" /> Event envelope
 
 All telemetry uses one envelope:
 
@@ -18,9 +22,11 @@ All telemetry uses one envelope:
 }
 ```
 
-## Endpoints
+---
 
-### `GET /healthz`
+## <img src="assets/icons/upload.svg" width="22" height="22" align="absmiddle" alt="" /> Endpoints
+
+### <img src="assets/icons/flow.svg" width="18" height="18" align="absmiddle" alt="" /> `GET /healthz`
 
 Health check.
 
@@ -30,7 +36,7 @@ Health check.
 { "status": "ok" }
 ```
 
-### `POST /v1/register`
+### <img src="assets/icons/lock.svg" width="18" height="18" align="absmiddle" alt="" /> `POST /v1/register`
 
 Register a client (device). When `TRUSTEDGE_AGENT_ENROLL_TOKEN` is set (required in production), send `Authorization: Bearer <enroll_token>`.
 
@@ -39,7 +45,7 @@ Register a client (device). When `TRUSTEDGE_AGENT_ENROLL_TOKEN` is set (required
 ```json
 {
   "device_id": "optional-existing-id",
-  "hostname": "elad-mbp",
+  "hostname": "endpoint-01",
   "os": "darwin",
   "os_version": "15.5",
   "arch": "arm64",
@@ -56,7 +62,7 @@ Register a client (device). When `TRUSTEDGE_AGENT_ENROLL_TOKEN` is set (required
 }
 ```
 
-### `POST /v1/events`
+### <img src="assets/icons/collection.svg" width="18" height="18" align="absmiddle" alt="" /> `POST /v1/events`
 
 Ingest one or more events. Requires `Authorization: Bearer <device_token>`.
 
@@ -70,7 +76,7 @@ Send a single `Event` object:
   "device_id": "dev_...",
   "type": "client_details",
   "ts": "2026-07-03T21:00:00Z",
-  "payload": { "hostname": "elad-mbp", "status": "online" }
+  "payload": { "hostname": "endpoint-01", "status": "online" }
 }
 ```
 
@@ -98,7 +104,7 @@ The server accepts either format. Maximum **100 events** per request (`MaxEvents
 }
 ```
 
-#### Compression
+#### <img src="assets/icons/compress.svg" width="16" height="16" align="absmiddle" alt="" /> Compression
 
 The agent may send zstd-compressed bodies:
 
@@ -120,7 +126,7 @@ Compression is applied only when the zstd output is smaller than the original JS
 | `403` | Event `device_id` does not match token |
 | `500` | Internal store error |
 
-### `GET /v1/clients/{id}`
+### <img src="assets/icons/agent.svg" width="18" height="18" align="absmiddle" alt="" /> `GET /v1/clients/{id}`
 
 Return latest client details and recent events (for demos / debugging).
 
@@ -129,13 +135,15 @@ Return latest client details and recent events (for demos / debugging).
 ```json
 {
   "device_id": "dev_...",
-  "last_details": { "hostname": "...", "status": "online" },
+  "last_details": { "hostname": "endpoint-01", "status": "online" },
   "last_seen_at": "2026-07-03T21:00:00Z",
   "recent_events": [ ... ]
 }
 ```
 
-## Event types
+---
+
+## <img src="assets/icons/collection.svg" width="22" height="22" align="absmiddle" alt="" /> Event types
 
 ### `client_details`
 
@@ -179,7 +187,7 @@ Short-window behavior (no daily rollup in v1).
 
 ### `process_start` / `process_exit`
 
-EDR-lite process visibility (metadata only).
+EDR-lite process visibility.
 
 | Field | Description |
 |-------|-------------|
@@ -187,20 +195,35 @@ EDR-lite process visibility (metadata only).
 | `ppid` | Parent process ID |
 | `user` | Owning user |
 | `comm` | Short process name |
-| `executable` | Binary path or comm |
+| `executable` | Binary path or name |
+| `cmdline` | Command line (truncated; optional) |
 
-## Production
+---
+
+## <img src="assets/icons/lock.svg" width="22" height="22" align="absmiddle" alt="" /> Production
 
 When `TRUSTEDGE_AGENT_PRODUCTION=1`:
 
-- API refuses to start without `TRUSTEDGE_AGENT_ENROLL_TOKEN` and `REDIS_URL`.
+- API refuses to start without `TRUSTEDGE_AGENT_ENROLL_TOKEN`.
 - Agents refuse to start without `TRUSTEDGE_AGENT_ENROLL_TOKEN` and an `https://` API URL.
 - Device tokens are stored in the OS keyring, not `state.json`.
 
 See [Configuration](configuration.md) for all environment variables.
 
-## Privacy
+---
+
+## <img src="assets/icons/privacy.svg" width="22" height="22" align="absmiddle" alt="" /> Privacy
 
 TrustEdge Agent does **not** collect window titles, URLs, keystrokes, screenshots, raw SSIDs, or full remote IP connection lists.
 
-Process monitoring collects metadata only — not command lines or file contents.
+Process monitoring includes metadata and a truncated command line — not file contents. Command lines can be disabled on the agent with `TRUSTEDGE_AGENT_PROCESS_INTERVAL=0`.
+
+---
+
+## <img src="assets/icons/config.svg" width="22" height="22" align="absmiddle" alt="" /> Related docs
+
+| | Doc | Purpose |
+|---|-----|---------|
+| <img src="assets/icons/config.svg" width="18" height="18" align="absmiddle" alt="" /> | [Configuration](configuration.md) | Environment variables |
+| <img src="assets/icons/platforms.svg" width="18" height="18" align="absmiddle" alt="" /> | [AWS deploy](../aws/README.md) | ECR build and EC2 deploy |
+| <img src="assets/icons/agent.svg" width="18" height="18" align="absmiddle" alt="" /> | [TrustEdge-Agent](https://github.com/TrustEdgeOrg/TrustEdge-Agent) | Endpoint agent |

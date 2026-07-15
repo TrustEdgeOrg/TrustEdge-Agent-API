@@ -2,20 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Protocol
 
 from kafka import KafkaProducer
 
-from app.models import Event
+from app.models.schemas import Event
+from app.publishers.base import Publisher
 
 LOG = logging.getLogger("trustedge-agent-api")
 DEFAULT_TOPIC = "trustedge.agent.events"
-
-
-class Publisher(Protocol):
-    def publish_event(self, event: Event) -> None: ...
-
-    def close(self) -> None: ...
 
 
 class KafkaPublisher:
@@ -58,3 +52,9 @@ class NullPublisher:
 
     def close(self) -> None:
         return None
+
+
+def publisher_from_settings(kafka_brokers: str, kafka_topic: str) -> Publisher:
+    if kafka_brokers.strip():
+        return KafkaPublisher(kafka_brokers.strip(), kafka_topic)
+    return NullPublisher()

@@ -34,7 +34,7 @@ Add `TrustEdgeOrg/TrustEdge-Agent-API` to the OIDC trust policy so it can assume
 
 ## EC2 prerequisites
 
-- TrustEdge deployed at `~/trustedge` (backend, redis, redpanda running).
+- TrustEdge deployed at `~/trustedge` (backend, redpanda running).
 - EC2 instance role can call `aws ecr get-login-password` and pull from ECR.
 - Security group allows SSH (port 22) from GitHub Actions runners.
 
@@ -61,3 +61,6 @@ After a manual `docker push`:
 export TRUSTEDGE_AGENT_API_IMAGE=804012660077.dkr.ecr.us-east-1.amazonaws.com/trustedge-agent-api:develop
 bash aws/ec2-deploy-api.sh
 ```
+
+The script auto-detects whether the EC2 TrustEdge checkout still uses the legacy
+`trusttwin-api` compose profile or the renamed `trustedge-agent-api` / `agent` profile.

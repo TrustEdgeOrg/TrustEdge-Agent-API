@@ -5,25 +5,23 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.config import Settings, get_settings
-from app.routes import router, set_store
-from app.store import EventStore
+from app.api.v1.router import router
+from app.config import get_settings
+from app.store.event_store import EventStore
 
 LOG = logging.getLogger("trustedge-agent-api")
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(app: FastAPI):
     settings = get_settings()
     settings.validate_production()
     store = EventStore.from_settings(settings)
-    set_store(store)
-    redis_note = "on" if store.redis_enabled else "off"
+    app.state.store = store
     kafka_note = "on" if store.kafka_enabled else "off"
     LOG.info(
-        "listening (disk=%s redis=%s kafka=%s)",
+        "listening (disk=%s kafka=%s)",
         settings.persist_files(),
-        redis_note,
         kafka_note,
     )
     try:
