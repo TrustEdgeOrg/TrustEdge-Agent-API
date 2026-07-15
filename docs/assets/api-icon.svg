@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="TrustEdge Agent API">
+  <defs>
+    <linearGradient id="g" x1="12%" y1="8%" x2="88%" y2="92%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+  </defs>
+  <rect x="10" y="14" width="44" height="36" rx="5" fill="none" stroke="url(#g)" stroke-width="3.2"/>
+  <path d="M22 26 H16 V38 H22 M42 26 H48 V38 H42 M28 24 L36 40" fill="none" stroke="url(#g)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

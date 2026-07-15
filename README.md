@@ -1,75 +1,140 @@
-# TrustEdge Agent API
+# <img src="docs/assets/api-icon.svg" alt="" width="36" height="36" align="absmiddle" /> TrustEdge Agent API
 
-Ingest API for the [TrustEdge](https://github.com/TrustEdgeOrg/TrustEdge) security observability platform. Endpoint agents POST telemetry here; optionally publishes to Kafka for detection.
+**Ingest, validate, and stream endpoint telemetry for TrustEdge detection.**
 
-Pairs with [TrustEdge-Agent](https://github.com/TrustEdgeOrg/TrustEdge-Agent) (cross-platform endpoint agent).
+A FastAPI service that accepts compressed batches from [TrustEdge-Agent](https://github.com/TrustEdgeOrg/TrustEdge-Agent), authenticates devices, persists events, and optionally publishes to Kafka for [TrustEdge](https://github.com/TrustEdgeOrg/TrustEdge).
 
-## Documentation
+[![Deploy API](https://github.com/TrustEdgeOrg/TrustEdge-Agent-API/actions/workflows/deploy-api.yml/badge.svg)](https://github.com/TrustEdgeOrg/TrustEdge-Agent-API/actions/workflows/deploy-api.yml)
 
-| Guide | Description |
-|-------|-------------|
-| [API reference](docs/api.md) | HTTP endpoints and event payloads |
-| [Configuration](docs/configuration.md) | Environment variables |
-| [AWS deploy](aws/README.md) | ECR build and EC2 deploy |
+<p align="center">
+  <img src="docs/assets/pipeline.svg" alt="Secure upload → Agent API → Validate → Persist → Stream → Detection Attack → Alert" width="920" />
+</p>
 
-## Quick start (local)
+---
+
+## Why it exists
+
+The agent needs a thin, reliable ingest front door — not a full SIEM. This API is that hop:
+
+| This API | Hands off to |
+|----------|--------------|
+| Register devices · accept events · optional Kafka | [TrustEdge](https://github.com/TrustEdgeOrg/TrustEdge) (rules, alerts, UI) |
+| Pair with collectors on the endpoint | [TrustEdge-Agent](https://github.com/TrustEdgeOrg/TrustEdge-Agent) |
+
+Built for local demos and AWS deploy: Python **3.12+**, FastAPI, optional stream publish.
+
+---
+
+## How it works
+
+1. **Secure upload** — agents POST over HTTPS with a device bearer token.  
+2. **Agent API** — register (`/v1/register`) and ingest (`/v1/events`).  
+3. **Validate** — decompress zstd if needed; check auth, schema, and batch limits.  
+4. **Persist** — keep devices / events on disk (or memory-only).  
+5. **Stream** — optional publish to Kafka / Redpanda.  
+6. **Detection Attack** — TrustEdge rules analyze the stream.  
+7. **Alert** — operators get notified in the TrustEdge UI.
+
+Want the schemas? See [API reference](docs/api.md) · [Configuration](docs/configuration.md).
+
+---
+
+## Engineering highlights
+
+| Area | Design choice |
+|------|----------------|
+| **Auth** | Optional enroll token on register; per-device bearer on ingest |
+| **Ingress** | Single event or `{"events":[…]}` batch (max 100) |
+| **Compression** | Accepts `Content-Encoding: zstd` with plain JSON fallback |
+| **Persistence** | `devices.json` + `events.jsonl` under a configurable data dir |
+| **Streaming** | Kafka publish when `KAFKA_BROKERS` is set; no-op otherwise |
+| **Safety** | `TRUSTEDGE_AGENT_PRODUCTION=1` requires enroll token |
+| **Deploy** | Docker image → ECR → EC2 via GitHub Actions |
+
+---
+
+## Quick start
+
+### Prerequisites
+
+- Python **3.12+**
+- Optional: Kafka / Redpanda if you want streaming
+
+### Local API
 
 ```bash
-cd ~/Desktop/TrustEdge-Agent-API
+git clone https://github.com/TrustEdgeOrg/TrustEdge-Agent-API.git
+cd TrustEdge-Agent-API
+
 pip install -r requirements-dev.txt
 python -m app.main
 ```
 
-With Kafka (optional):
+With Kafka:
 
 ```bash
 export KAFKA_BROKERS=127.0.0.1:9092
 python -m app.main
 ```
 
-Point the agent at this API:
+Point an agent at it:
 
 ```bash
-cd ~/Desktop/TrustEdge-Agent
+cd TrustEdge-Agent
 export TRUSTEDGE_AGENT_API_URL=http://127.0.0.1:8080
+# export TRUSTEDGE_AGENT_ENROLL_TOKEN=...   # if set on the API
 go run ./cmd/trustedge-agent
 ```
 
-## Build
+Production checklist: `TRUSTEDGE_AGENT_PRODUCTION=1` + enroll token.  
+Full knobs: [Configuration](docs/configuration.md).
 
-Requires **Python 3.12+**.
-
-```bash
-pip install -r requirements-dev.txt
-make test
-```
-
-## Deploy (ECR → EC2)
-
-CI (`.github/workflows/deploy-api.yml`) builds the Docker image, pushes to ECR, and deploys to EC2 via TrustEdge `docker-compose.yml`.
-
-See [aws/README.md](aws/README.md) for secrets and one-time setup.
+---
 
 ## Project layout
 
 ```text
 app/
-  main.py                  # App entry + uvicorn
-  config.py                # Settings
-  dependencies.py          # FastAPI dependencies (store, settings)
-  api/
-    errors.py              # Plain-text error responses
-    ingest.py              # Event body decoding (JSON, zstd)
-    v1/                    # HTTP routes (/healthz, /v1/*)
-  models/
-    schemas.py             # Pydantic request/response models
-  store/
-    event_store.py         # Registration + event ingestion
-    disk.py                # devices.json / events.jsonl persistence
-    device_record.py       # Device state dataclass
-  publishers/
-    kafka.py               # Optional Kafka publisher
-  core/                    # auth, codec, clock, idgen, constants
-docs/                      # API reference
-tests/                     # pytest suite
+  main.py                 FastAPI app + uvicorn lifespan
+  config.py               Settings from environment
+  dependencies.py         Store / settings wiring
+  api/                    Routes, ingest decode, errors
+  models/                 Pydantic request / response schemas
+  store/                  Registration + event persistence
+  publishers/             Optional Kafka publisher
+  core/                   Auth, zstd codec, ids, constants
+docs/                     API reference + configuration
+tests/                    pytest suite
+aws/                      ECR / EC2 deploy notes
 ```
+
+---
+
+## Develop
+
+```bash
+pip install -r requirements-dev.txt
+make test
+python -m app.main
+```
+
+| Doc | Purpose |
+|-----|---------|
+| [API reference](docs/api.md) | Endpoints, envelopes, event types |
+| [Configuration](docs/configuration.md) | Every environment variable |
+| [AWS deploy](aws/README.md) | ECR build and EC2 deploy |
+
+---
+
+## Ecosystem
+
+| Repository | Role |
+|------------|------|
+| **[TrustEdge-Agent](https://github.com/TrustEdgeOrg/TrustEdge-Agent)** | Endpoint collector |
+| **[TrustEdge-Agent-API](https://github.com/TrustEdgeOrg/TrustEdge-Agent-API)** | This ingest API |
+| **[TrustEdge](https://github.com/TrustEdgeOrg/TrustEdge)** | Dashboard · rules · alerts |
+| **[TrustEdgeClient](https://github.com/TrustEdgeOrg/TrustEdgeClient)** | Optional VPN enroll client |
+
+---
+
+Part of [TrustEdgeOrg](https://github.com/TrustEdgeOrg) · Built with FastAPI.
