@@ -48,6 +48,7 @@ Want the schemas? See [API reference](docs/api.md) · [Configuration](docs/confi
 | **Compression** | Accepts `Content-Encoding: zstd` with plain JSON fallback |
 | **Persistence** | `devices.json` + `events.jsonl` under a configurable data dir |
 | **Streaming** | Kafka publish when `KAFKA_BROKERS` is set; no-op otherwise |
+| **TrustEdge registry** | On register, optional upsert to `TRUSTEDGE_BACKEND_URL` `/internal/agents/upsert` (fail-open) |
 | **Safety** | `TRUSTEDGE_AGENT_PRODUCTION=1` requires enroll token |
 | **Deploy** | Docker image → ECR → EC2 via GitHub Actions |
 

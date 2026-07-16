@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Request
 from starlette.responses import PlainTextResponse
 
 from app.api.errors import plain_error
+from app.clients.trustedge_backend import upsert_agent_to_trustedge
 from app.config import Settings, get_settings
 from app.core.auth import bearer_token
 from app.core.constants import ERR_BAD_REQUEST, ERR_INTERNAL, ERR_INVALID_JSON, ERR_UNAUTHORIZED
@@ -37,6 +38,9 @@ async def register(
             return plain_error(ERR_INVALID_JSON, 400)
 
     try:
-        return store.register(req)
+        response = store.register(req)
     except OSError:
         return plain_error(ERR_INTERNAL, 500)
+
+    upsert_agent_to_trustedge(settings, req, response)
+    return response
