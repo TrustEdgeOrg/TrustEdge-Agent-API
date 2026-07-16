@@ -52,12 +52,19 @@ class Settings(BaseSettings):
             out["kafka_brokers"] = _env("KAFKA_BROKERS")
         if "kafka_topic" not in out:
             out["kafka_topic"] = _env("KAFKA_TOPIC", fallback="trustedge.agent.events")
-        if "trustedge_backend_url" not in out:
-            out["trustedge_backend_url"] = _env("TRUSTEDGE_BACKEND_URL")
-        if "trustedge_ingest_token" not in out:
-            # Prefer dedicated token; fall back to DNS_INGEST_TOKEN for shared service auth.
-            out["trustedge_ingest_token"] = _env("TRUSTEDGE_INGEST_TOKEN") or _env("DNS_INGEST_TOKEN")
-        if "trustedge_upsert_timeout_sec" not in out:
+        if "trustedge_backend_url" not in out and "TRUSTEDGE_BACKEND_URL" not in out:
+            backend_url = _env("TRUSTEDGE_BACKEND_URL")
+            out["trustedge_backend_url"] = backend_url
+            out["TRUSTEDGE_BACKEND_URL"] = backend_url
+        # Set both field name and validation alias — pydantic-settings matches the alias.
+        ingest_token = (
+            str(out.get("trustedge_ingest_token") or out.get("TRUSTEDGE_INGEST_TOKEN") or "")
+            .strip()
+            or _env("TRUSTEDGE_INGEST_TOKEN")
+        )
+        out["trustedge_ingest_token"] = ingest_token
+        out["TRUSTEDGE_INGEST_TOKEN"] = ingest_token
+        if "trustedge_upsert_timeout_sec" not in out and "TRUSTEDGE_UPSERT_TIMEOUT_SEC" not in out:
             raw_timeout = _env("TRUSTEDGE_UPSERT_TIMEOUT_SEC", "5")
             try:
                 out["trustedge_upsert_timeout_sec"] = float(raw_timeout)
