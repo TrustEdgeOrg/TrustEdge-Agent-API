@@ -8,6 +8,8 @@ from starlette.responses import PlainTextResponse, Response
 
 from app.api.errors import plain_error
 from app.api.ingest import decode_events, read_request_body
+from app.clients.trustedge_backend import upsert_agent_fields
+from app.config import Settings, get_settings
 from app.core import clock as clock_mod
 from app.core.auth import bearer_token
 from app.core.constants import (
@@ -32,6 +34,7 @@ router = APIRouter()
 async def ingest_events(
     request: Request,
     store: EventStore = Depends(get_store),
+    settings: Settings = Depends(get_settings),
 ) -> Union[Response, PlainTextResponse]:
     token = bearer_token(request)
     if not token:
@@ -71,6 +74,23 @@ async def ingest_events(
         except OSError:
             return plain_error(ERR_INTERNAL, 500)
         accepted += 1
+
+    # Ensure agent appears in TrustEdge Postgres even when the client skipped
+    # /v1/register (stored credentials). Fail-open if backend is unset/down.
+    details: dict = {}
+    client = store.get_client(device_id, limit=1)
+    if client and client.last_details:
+        details = client.last_details
+    upsert_agent_fields(
+        settings,
+        device_id,
+        hostname=str(details["hostname"]) if details.get("hostname") else None,
+        os=str(details["os"]) if details.get("os") else None,
+        os_version=str(details["os_version"]) if details.get("os_version") else None,
+        arch=str(details["arch"]) if details.get("arch") else None,
+        agent_version=str(details["agent_version"]) if details.get("agent_version") else None,
+        status="active",
+    )
 
     return Response(
         content=json.dumps({"status": STATUS_ACCEPTED, "accepted": accepted}),
