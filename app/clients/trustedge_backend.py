@@ -46,11 +46,10 @@ def upsert_agent_fields(
 
     data = json.dumps(body).encode("utf-8")
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-
     url = f"{base}/internal/agents/upsert"
     request = Request(url, data=data, headers=headers, method="POST")
+    if token:
+        request.add_unredirected_header("Authorization", f"Bearer {token}")
     try:
         with urlopen(request, timeout=settings.trustedge_upsert_timeout_sec) as resp:
             if resp.status >= 400:
