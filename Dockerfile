@@ -16,8 +16,8 @@ RUN adduser -D -H -u 10001 app \
 
 USER app
 
-WORKDIR /data
-
+# Keep code WORKDIR at /app so `python -m app.main` resolves without relying on PYTHONPATH.
+# Persist agent state under TRUSTEDGE_AGENT_DATA_DIR (/data), not the process cwd.
 EXPOSE 8080
 
 ENV TRUSTEDGE_AGENT_LISTEN=:8080 \
