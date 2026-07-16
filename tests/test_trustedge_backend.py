@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from app.clients.trustedge_backend import upsert_agent_to_trustedge
+from app.clients.trustedge_backend import upsert_agent_fields, upsert_agent_to_trustedge
 from app.config import Settings
 from app.models.schemas import RegisterRequest, RegisterResponse
 
@@ -54,6 +54,27 @@ def test_upsert_posts_payload() -> None:
         body = req.data.decode("utf-8")
         assert "dev_abc" in body
         assert "mbp" in body
+
+
+def test_upsert_fields_from_events_path() -> None:
+    settings = _settings(TRUSTEDGE_BACKEND_URL="http://backend:8000", TRUSTEDGE_INGEST_TOKEN="t")
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.__enter__.return_value = mock_resp
+    mock_resp.__exit__.return_value = False
+
+    with patch("app.clients.trustedge_backend.urlopen", return_value=mock_resp) as urlopen:
+        upsert_agent_fields(
+            settings,
+            "dev_xyz",
+            hostname="host1",
+            os="linux",
+            status="active",
+        )
+        urlopen.assert_called_once()
+        body = urlopen.call_args[0][0].data.decode("utf-8")
+        assert "dev_xyz" in body
+        assert "active" in body
 
 
 def test_upsert_fail_open_on_network_error() -> None:
