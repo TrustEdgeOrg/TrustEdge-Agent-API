@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     kafka_brokers: str = Field(default="", validation_alias="KAFKA_BROKERS")
     kafka_topic: str = Field(default="trustedge.agent.events", validation_alias="KAFKA_TOPIC")
     persist_files_override: Optional[str] = None
+    trustedge_backend_url: str = Field(default="", validation_alias="TRUSTEDGE_BACKEND_URL")
+    trustedge_ingest_token: str = Field(default="", validation_alias="TRUSTEDGE_INGEST_TOKEN")
+    trustedge_upsert_timeout_sec: float = Field(
+        default=5.0, validation_alias="TRUSTEDGE_UPSERT_TIMEOUT_SEC"
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -47,6 +52,17 @@ class Settings(BaseSettings):
             out["kafka_brokers"] = _env("KAFKA_BROKERS")
         if "kafka_topic" not in out:
             out["kafka_topic"] = _env("KAFKA_TOPIC", fallback="trustedge.agent.events")
+        if "trustedge_backend_url" not in out:
+            out["trustedge_backend_url"] = _env("TRUSTEDGE_BACKEND_URL")
+        if "trustedge_ingest_token" not in out:
+            # Prefer dedicated token; fall back to DNS_INGEST_TOKEN for shared service auth.
+            out["trustedge_ingest_token"] = _env("TRUSTEDGE_INGEST_TOKEN") or _env("DNS_INGEST_TOKEN")
+        if "trustedge_upsert_timeout_sec" not in out:
+            raw_timeout = _env("TRUSTEDGE_UPSERT_TIMEOUT_SEC", "5")
+            try:
+                out["trustedge_upsert_timeout_sec"] = float(raw_timeout)
+            except ValueError:
+                out["trustedge_upsert_timeout_sec"] = 5.0
         if "persist_files_override" not in out:
             if "TRUSTEDGE_AGENT_PERSIST_FILES" in os.environ:
                 out["persist_files_override"] = os.environ["TRUSTEDGE_AGENT_PERSIST_FILES"]

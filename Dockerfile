@@ -21,7 +21,8 @@ USER app
 EXPOSE 8080
 
 ENV TRUSTEDGE_AGENT_LISTEN=:8080 \
-    TRUSTEDGE_AGENT_DATA_DIR=/data
+    TRUSTEDGE_AGENT_DATA_DIR=/data \
+    PYTHONPATH=/app
 
 HEALTHCHECK --interval=15s --timeout=3s --start-period=5s --retries=3 \
     CMD wget -q -O- http://127.0.0.1:8080/healthz >/dev/null || exit 1
