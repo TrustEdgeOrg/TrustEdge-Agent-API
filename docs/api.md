@@ -16,7 +16,7 @@ All telemetry uses one envelope:
 {
   "event_id": "evt_...",
   "device_id": "dev_...",
-  "type": "client_details | network_summary | action_summary | process_start | process_exit",
+  "type": "client_details | network_summary | action_summary | process_start | process_exit | driver_load | service_install | registry_persistence",
   "ts": "2026-07-03T21:00:00Z",
   "payload": {}
 }
@@ -197,6 +197,42 @@ EDR-lite process visibility.
 | `comm` | Short process name |
 | `executable` | Binary path or name |
 | `cmdline` | Command line (truncated; optional) |
+
+### `driver_load`
+
+Newly observed loaded driver (Windows) or kext (macOS).
+
+| Field | Description |
+|-------|-------------|
+| `name` | Driver / kext identifier |
+| `display_name` | Human-readable name when available |
+| `path` | Image / plist path when available |
+| `state` / `status` | Runtime state |
+| `service_type` | e.g. driver class or `kext` |
+
+### `service_install`
+
+Newly observed Windows service or macOS LaunchDaemon.
+
+| Field | Description |
+|-------|-------------|
+| `name` | Service name / launchd label |
+| `display_name` | Display name when available |
+| `path` | Binary or plist path |
+| `start_mode` | Start type / LaunchDaemon |
+| `account` | Run-as account / hive scope when available |
+
+### `registry_persistence`
+
+New or changed persistence artifact: Windows Run/RunOnce or macOS LaunchAgent.
+
+| Field | Description |
+|-------|-------------|
+| `hive` | Registry hive or macOS scope (`user` / `system`) |
+| `key_path` | Registry key or LaunchAgents directory |
+| `value_name` | Value name / launchd label |
+| `value` | Command / program arguments |
+| `path` | Optional plist path (macOS) |
 
 ---
 

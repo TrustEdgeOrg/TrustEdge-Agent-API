@@ -19,6 +19,9 @@ TYPE_NETWORK_SUMMARY = "network_summary"
 TYPE_ACTION_SUMMARY = "action_summary"
 TYPE_PROCESS_START = "process_start"
 TYPE_PROCESS_EXIT = "process_exit"
+TYPE_DRIVER_LOAD = "driver_load"
+TYPE_SERVICE_INSTALL = "service_install"
+TYPE_REGISTRY_PERSIST = "registry_persistence"
 
 ALLOWED_EVENT_TYPES = frozenset(
     {
@@ -27,6 +30,9 @@ ALLOWED_EVENT_TYPES = frozenset(
         TYPE_ACTION_SUMMARY,
         TYPE_PROCESS_START,
         TYPE_PROCESS_EXIT,
+        TYPE_DRIVER_LOAD,
+        TYPE_SERVICE_INSTALL,
+        TYPE_REGISTRY_PERSIST,
     }
 )
 
