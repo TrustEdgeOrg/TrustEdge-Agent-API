@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 from typing import Union
 
 from fastapi import APIRouter, Depends, Request
-
 from starlette.responses import PlainTextResponse
 
 from app.api.errors import plain_error
@@ -16,6 +17,28 @@ from app.models.schemas import RegisterRequest, RegisterResponse
 from app.store.event_store import EventStore
 
 router = APIRouter()
+LOG = logging.getLogger("trustedge-agent-api")
+
+
+def _schedule_register_upsert(
+    settings: Settings, req: RegisterRequest, response: RegisterResponse
+) -> None:
+    async def _run() -> None:
+        await asyncio.to_thread(upsert_agent_to_trustedge, settings, req, response)
+
+    task = asyncio.create_task(_run())
+
+    def _done(done: asyncio.Task[None]) -> None:
+        try:
+            done.result()
+        except Exception as exc:  # noqa: BLE001 — fail-open background upsert
+            LOG.warning(
+                "background register upsert failed for device_id=%s: %s",
+                response.device_id,
+                exc,
+            )
+
+    task.add_done_callback(_done)
 
 
 @router.post("/register", response_model=None)
@@ -38,9 +61,9 @@ async def register(
             return plain_error(ERR_INVALID_JSON, 400)
 
     try:
-        response = store.register(req)
+        response = await asyncio.to_thread(store.register, req)
     except OSError:
         return plain_error(ERR_INTERNAL, 500)
 
-    upsert_agent_to_trustedge(settings, req, response)
+    _schedule_register_upsert(settings, req, response)
     return response

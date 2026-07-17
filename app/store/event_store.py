@@ -83,26 +83,37 @@ class EventStore:
             return self._tokens.get(token)
 
     def add_event(self, event: Event) -> None:
+        self.add_events([event])
+
+    def add_events(self, events: list[Event]) -> None:
+        """Persist a batch under one lock and one devices.json rewrite."""
+        if not events:
+            return
+        to_publish: list[Event] = []
         with self._lock:
-            rec = self._devices.get(event.device_id)
-            if rec is None:
-                rec = DeviceRecord(device_id=event.device_id)
-                self._devices[event.device_id] = rec
+            for event in events:
+                rec = self._devices.get(event.device_id)
+                if rec is None:
+                    rec = DeviceRecord(device_id=event.device_id)
+                    self._devices[event.device_id] = rec
 
-            ts = event.ts or clock_mod.now_utc()
-            event.ts = ts
-            rec.last_seen_at = ts
-            if event.type == TYPE_CLIENT_DETAILS:
-                rec.last_details = dict(event.payload)
+                ts = event.ts or clock_mod.now_utc()
+                event.ts = ts
+                rec.last_seen_at = ts
+                if event.type == TYPE_CLIENT_DETAILS:
+                    rec.last_details = dict(event.payload)
 
-            events = self._events.setdefault(event.device_id, [])
-            events.append(event)
-            if len(events) > self._max_events:
-                events = events[-self._max_events :]
-            self._events[event.device_id] = events
+                device_events = self._events.setdefault(event.device_id, [])
+                device_events.append(event)
+                if len(device_events) > self._max_events:
+                    device_events = device_events[-self._max_events :]
+                self._events[event.device_id] = device_events
 
-            self._disk.append_event(event)
+                self._disk.append_event(event)
+                to_publish.append(event)
+            # One devices.json write per batch (was once per event — hung ingest under load).
             self._disk.save_devices(self._devices)
+        for event in to_publish:
             self._publisher.publish_event(event)
 
     def get_client(self, device_id: str, limit: int = 50) -> ClientView | None:
