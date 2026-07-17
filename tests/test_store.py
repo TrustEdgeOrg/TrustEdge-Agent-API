@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from app.config import Settings
-from app.core.constants import TYPE_CLIENT_DETAILS
+from app.core.constants import TYPE_CLIENT_DETAILS, TYPE_PROCESS_START
 from app.models.schemas import Event, RegisterRequest
 from app.store.event_store import EventStore
 
@@ -72,4 +72,31 @@ def test_add_event_publishes_to_kafka(tmp_path) -> None:
     store.add_event(event)
     assert len(publisher.events) == 1
     assert publisher.events[0].event_id == "evt_kafka"
+    store.close()
+
+
+def test_add_events_writes_devices_once(tmp_path, monkeypatch) -> None:
+    settings = Settings(data_dir=str(tmp_path / "data"), production=False)
+    store = EventStore.from_settings(settings)
+    reg = store.register(RegisterRequest(hostname="batch-host"))
+    saves = {"n": 0}
+    original = store._disk.save_devices
+
+    def counting_save(devices):
+        saves["n"] += 1
+        return original(devices)
+
+    monkeypatch.setattr(store._disk, "save_devices", counting_save)
+    batch = [
+        Event(
+            event_id=f"evt_{i}",
+            device_id=reg.device_id,
+            type=TYPE_PROCESS_START,
+            payload={"pid": i},
+        )
+        for i in range(8)
+    ]
+    store.add_events(batch)
+    assert saves["n"] == 1
+    assert len(store.get_client(reg.device_id, limit=20).recent_events) == 8
     store.close()
