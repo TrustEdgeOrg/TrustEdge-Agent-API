@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     production: bool = Field(default=False, validation_alias="TRUSTEDGE_AGENT_PRODUCTION")
     kafka_brokers: str = Field(default="", validation_alias="KAFKA_BROKERS")
     kafka_topic: str = Field(default="trustedge.agent.events", validation_alias="KAFKA_TOPIC")
+    redis_url: str = Field(default="", validation_alias="REDIS_URL")
     persist_files_override: Optional[str] = None
     trustedge_backend_url: str = Field(default="", validation_alias="TRUSTEDGE_BACKEND_URL")
     trustedge_ingest_token: str = Field(default="", validation_alias="TRUSTEDGE_INGEST_TOKEN")
@@ -52,6 +53,10 @@ class Settings(BaseSettings):
             out["kafka_brokers"] = _env("KAFKA_BROKERS")
         if "kafka_topic" not in out:
             out["kafka_topic"] = _env("KAFKA_TOPIC", fallback="trustedge.agent.events")
+        if "redis_url" not in out and "REDIS_URL" not in out:
+            redis_url = _env("REDIS_URL")
+            out["redis_url"] = redis_url
+            out["REDIS_URL"] = redis_url
         if "trustedge_backend_url" not in out and "TRUSTEDGE_BACKEND_URL" not in out:
             backend_url = _env("TRUSTEDGE_BACKEND_URL")
             out["trustedge_backend_url"] = backend_url
