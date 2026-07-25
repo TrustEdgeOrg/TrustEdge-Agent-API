@@ -12,6 +12,7 @@ from app.publishers.base import Publisher
 from app.publishers.kafka import NullPublisher, publisher_from_settings
 from app.store.device_record import DeviceRecord
 from app.store.disk import DiskPersistence
+from app.store.twin_redis import TwinRedisStore, twin_store_from_url
 
 
 class EventStore:
@@ -20,6 +21,7 @@ class EventStore:
         settings: Settings,
         *,
         publisher: Publisher | None = None,
+        twin: TwinRedisStore | None = None,
     ) -> None:
         self._max_events = settings.max_events if settings.max_events > 0 else 500
         self._disk = DiskPersistence(Path(settings.data_dir), enabled=settings.persist_files())
@@ -28,12 +30,13 @@ class EventStore:
         self._tokens: dict[str, str] = {}
         self._events: dict[str, list[Event]] = {}
         self._publisher = publisher or NullPublisher()
+        self._twin = twin if twin is not None else twin_store_from_url(settings.redis_url)
         self._load_from_disk()
 
     @classmethod
     def from_settings(cls, settings: Settings) -> EventStore:
         publisher = publisher_from_settings(settings.kafka_brokers, settings.kafka_topic)
-        return cls(settings, publisher=publisher)
+        return cls(settings, publisher=publisher, twin=twin_store_from_url(settings.redis_url))
 
     @property
     def kafka_enabled(self) -> bool:
@@ -115,6 +118,12 @@ class EventStore:
             self._disk.save_devices(self._devices)
         for event in to_publish:
             self._publisher.publish_event(event)
+        # Fail-open Redis twin update (dashboard live state / timeline).
+        by_device: dict[str, list[Event]] = {}
+        for event in to_publish:
+            by_device.setdefault(event.device_id, []).append(event)
+        for device_id, device_events in by_device.items():
+            self._twin.apply_events(device_id, device_events)
 
     def get_client(self, device_id: str, limit: int = 50) -> ClientView | None:
         with self._lock:
