@@ -16,6 +16,7 @@ from typing import Any, Optional
 from app.core.constants import (
     TYPE_ACTION_SUMMARY,
     TYPE_CLIENT_DETAILS,
+    TYPE_KNOWN_AI_APP,
     TYPE_NETWORK_SUMMARY,
 )
 from app.models.schemas import Event
@@ -88,6 +89,7 @@ class TwinRedisStore:
                 "client_details": {},
                 "network_summary": {},
                 "action_summary": {},
+                "known_ai_apps": {},
             }
             if raw_latest:
                 try:
@@ -95,7 +97,12 @@ class TwinRedisStore:
                     if isinstance(parsed, dict):
                         doc.update(parsed)
                         doc["device_id"] = device_id
-                        for field in ("client_details", "network_summary", "action_summary"):
+                        for field in (
+                            "client_details",
+                            "network_summary",
+                            "action_summary",
+                            "known_ai_apps",
+                        ):
                             if not isinstance(doc.get(field), dict):
                                 doc[field] = {}
                 except json.JSONDecodeError:
@@ -114,6 +121,17 @@ class TwinRedisStore:
                     doc["network_summary"] = dict(payload)
                 elif event.type == TYPE_ACTION_SUMMARY:
                     doc["action_summary"] = dict(payload)
+                elif event.type == TYPE_KNOWN_AI_APP:
+                    apps = doc["known_ai_apps"]
+                    if not isinstance(apps, dict):
+                        apps = {}
+                        doc["known_ai_apps"] = apps
+                    app_id = str(payload.get("id") or "").strip()
+                    if app_id:
+                        if payload.get("removed") is True:
+                            apps.pop(app_id, None)
+                        else:
+                            apps[app_id] = dict(payload)
 
                 envelope = {
                     "event_id": event.event_id or "",
