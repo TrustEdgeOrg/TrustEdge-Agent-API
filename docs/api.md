@@ -93,7 +93,7 @@ Send an `EventBatch` wrapper (used by the agent for multi-event flushes):
 }
 ```
 
-The server accepts either format. Maximum **100 events** per request (`MaxEventsPerBatch`).
+The server accepts either format. Maximum **100 events** per request (`MAX_EVENTS_PER_BATCH`).
 
 **Response:** `202 Accepted`
 
@@ -128,7 +128,7 @@ Compression is applied only when the zstd output is smaller than the original JS
 
 ### <img src="assets/icons/agent.svg" width="18" height="18" align="absmiddle" alt="" /> `GET /v1/clients/{id}`
 
-Return latest client details and recent events (for demos / debugging).
+Return latest client details and recent events (for demos / debugging). **No auth** — do not expose publicly without a reverse proxy or network controls.
 
 **Response:** `200 OK`
 
@@ -140,6 +140,21 @@ Return latest client details and recent events (for demos / debugging).
   "recent_events": [ ... ]
 }
 ```
+
+---
+
+## <img src="assets/icons/flow.svg" width="22" height="22" align="absmiddle" alt="" /> Side effects on ingest
+
+After a successful `POST /v1/events` (and similarly on register where noted):
+
+| Path | When | Behavior |
+|------|------|----------|
+| Disk | `TRUSTEDGE_AGENT_PERSIST_FILES` not `0` | Append to `events.jsonl`; update `devices.json` |
+| Kafka | `KAFKA_BROKERS` set | Publish each accepted event to `KAFKA_TOPIC` |
+| Redis twin | `REDIS_URL` set | Fail-open update of `twin:devices`, `twin:device:{id}:latest`, events ZSET (cap 200) |
+| TrustEdge registry | `TRUSTEDGE_BACKEND_URL` set | Fail-open background `POST /internal/agents/upsert` (register + ingest) |
+
+Twin “latest” folds `client_details`, `network_summary`, `action_summary`, and `known_ai_apps`. Other event types still land in the events ZSET.
 
 ---
 
@@ -162,7 +177,7 @@ Identity + presence heartbeat.
 
 ### `network_summary`
 
-Coarse network posture (no raw connection tables).
+Coarse network posture (counts and top ports — not a full connection dump).
 
 | Field | Description |
 |-------|-------------|
@@ -172,6 +187,22 @@ Coarse network posture (no raw connection tables).
 | `established_count` | Established TCP |
 | `top_remote_ports` | `[{port, count}, …]` |
 | `foreground_app_connections` | Optional app-linked count |
+
+### `network_connection`
+
+Incremental ESTABLISHED TCP sample from the agent (poll-based; not a full table dump). Accepted and streamed/persisted like other events; not folded into Redis twin “latest” fields (still appears in the twin events ZSET).
+
+| Field | Description |
+|-------|-------------|
+| `pid` | Owning process ID |
+| `comm` | Short process name when available |
+| `protocol` | Typically `tcp` |
+| `local_addr` / `local_port` | Local endpoint |
+| `remote_addr` / `remote_ip` / `remote_port` | Remote endpoint |
+| `direction` | Direction hint when present |
+| `remote_hostname` / `domain` | Optional reverse-DNS enrichment |
+
+Disable on the agent with `TRUSTEDGE_AGENT_CONNECTION_INTERVAL=0`.
 
 ### `action_summary`
 
@@ -197,6 +228,10 @@ EDR-lite process visibility.
 | `comm` | Short process name |
 | `executable` | Binary path or name |
 | `cmdline` | Command line (truncated; optional) |
+
+### `file_open`
+
+Accepted by the API for forward compatibility. The current TrustEdge Agent does not emit this type by default.
 
 ### `driver_load`
 
@@ -273,9 +308,9 @@ See [Configuration](configuration.md) for all environment variables.
 
 ## <img src="assets/icons/privacy.svg" width="22" height="22" align="absmiddle" alt="" /> Privacy
 
-TrustEdge Agent does **not** collect window titles, URLs, keystrokes, screenshots, raw SSIDs, or full remote IP connection lists.
+TrustEdge Agent does **not** collect window titles, URLs, keystrokes, screenshots, or raw SSIDs. Connection samples (`network_connection`) are incremental and capped — not full table dumps — and can be disabled with `TRUSTEDGE_AGENT_CONNECTION_INTERVAL=0`.
 
-Process monitoring includes metadata and a truncated command line — not file contents. Command lines can be disabled on the agent with `TRUSTEDGE_AGENT_PROCESS_INTERVAL=0`.
+Process monitoring includes metadata and a truncated command line — not file contents. Disable processes with `TRUSTEDGE_AGENT_PROCESS_INTERVAL=0`.
 
 ---
 
@@ -286,3 +321,4 @@ Process monitoring includes metadata and a truncated command line — not file c
 | <img src="assets/icons/config.svg" width="18" height="18" align="absmiddle" alt="" /> | [Configuration](configuration.md) | Environment variables |
 | <img src="assets/icons/platforms.svg" width="18" height="18" align="absmiddle" alt="" /> | [AWS deploy](../aws/README.md) | ECR build and EC2 deploy |
 | <img src="assets/icons/agent.svg" width="18" height="18" align="absmiddle" alt="" /> | [TrustEdge-Agent](https://github.com/TrustEdgeOrg/TrustEdge-Agent) | Endpoint agent |
+| <img src="assets/icons/architecture.svg" width="18" height="18" align="absmiddle" alt="" /> | [TrustEdge deploy](https://github.com/TrustEdgeOrg/TrustEdge/blob/main/docs/DEPLOY.md) | Production AWS layout |
