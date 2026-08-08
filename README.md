@@ -1,4 +1,4 @@
-# <img src="docs/assets/api-icon.svg" alt="" width="36" height="36" align="absmiddle" /> TrustEdge Agent API
+# <img src="docs/assets/trustedge-icon.svg" alt="" width="36" height="36" align="absmiddle" /> TrustEdge Agent API
 
 **Ingest, validate, and stream endpoint telemetry for TrustEdge detection.**
 
