@@ -36,7 +36,7 @@ Built for local demos and AWS deploy: Python **3.12+**, FastAPI, optional stream
 7. **Detection** — TrustEdge rules, behavior, and AI activity analyze the stream.  
 8. **Alert** — operators get notified in the TrustEdge UI.
 
-Want the schemas? See [API reference](docs/api.md) · [Configuration](docs/configuration.md).
+Want the schemas? See [Docs hub](docs/README.md) · [API reference](docs/api.md) · [Configuration](docs/configuration.md).
 
 ---
 
@@ -103,10 +103,11 @@ app/
   dependencies.py         Store / settings wiring
   api/                    Routes, ingest decode, errors
   models/                 Pydantic request / response schemas
-  store/                  Registration + event persistence
+  store/                  Registration, events, optional Redis twin
+  clients/                Fail-open TrustEdge agents upsert
   publishers/             Optional Kafka publisher
   core/                   Auth, zstd codec, ids, constants
-docs/                     API reference + configuration
+docs/                     Hub · API reference · configuration
 tests/                    pytest suite
 aws/                      ECR / EC2 deploy notes
 ```
@@ -123,6 +124,7 @@ python -m app.main
 
 | Doc | Purpose |
 |-----|---------|
+| [Docs hub](docs/README.md) | Index of API docs |
 | [API reference](docs/api.md) | Endpoints, envelopes, event types |
 | [Configuration](docs/configuration.md) | Every environment variable |
 | [AWS deploy](aws/README.md) | ECR build and EC2 deploy |
