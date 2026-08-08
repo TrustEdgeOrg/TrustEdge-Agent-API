@@ -18,7 +18,7 @@ The agent needs a thin, reliable ingest front door — not a full SIEM. This API
 
 | This API | Hands off to |
 |----------|--------------|
-| Register devices · accept events · optional Kafka | [TrustEdge](https://github.com/TrustEdgeOrg/TrustEdge) (rules, alerts, UI) |
+| Register devices · accept events · optional Kafka · live twin | [TrustEdge](https://github.com/TrustEdgeOrg/TrustEdge) (rules, behavior, AI activity, alerts, UI) |
 | Pair with collectors on the endpoint | [TrustEdge-Agent](https://github.com/TrustEdgeOrg/TrustEdge-Agent) |
 
 Built for local demos and AWS deploy: Python **3.12+**, FastAPI, optional stream publish.
@@ -32,8 +32,9 @@ Built for local demos and AWS deploy: Python **3.12+**, FastAPI, optional stream
 3. **Validate** — decompress zstd if needed; check auth, schema, and batch limits.  
 4. **Persist** — keep devices / events on disk (or memory-only).  
 5. **Stream** — optional publish to Kafka / Redpanda.  
-6. **Detection Attack** — TrustEdge rules analyze the stream.  
-7. **Alert** — operators get notified in the TrustEdge UI.
+6. **Live twin** — optional Redis device state when `REDIS_URL` is set (fail-open).  
+7. **Detection** — TrustEdge rules, behavior, and AI activity analyze the stream.  
+8. **Alert** — operators get notified in the TrustEdge UI.
 
 Want the schemas? See [API reference](docs/api.md) · [Configuration](docs/configuration.md).
 
@@ -48,7 +49,8 @@ Want the schemas? See [API reference](docs/api.md) · [Configuration](docs/confi
 | **Compression** | Accepts `Content-Encoding: zstd` with plain JSON fallback |
 | **Persistence** | `devices.json` + `events.jsonl` under a configurable data dir |
 | **Streaming** | Kafka publish when `KAFKA_BROKERS` is set; no-op otherwise |
-| **TrustEdge registry** | On register, optional upsert to `TRUSTEDGE_BACKEND_URL` `/internal/agents/upsert` (fail-open) |
+| **Live twin** | Optional Redis twin (`REDIS_URL`) for live device presence / state |
+| **TrustEdge registry** | Fail-open upsert to `/internal/agents/upsert` on register and ingest |
 | **Safety** | `TRUSTEDGE_AGENT_PRODUCTION=1` requires enroll token |
 | **Deploy** | Docker image → ECR → EC2 via GitHub Actions |
 
