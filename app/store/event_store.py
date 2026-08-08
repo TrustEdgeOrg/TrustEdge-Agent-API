@@ -12,6 +12,7 @@ from app.publishers.base import Publisher
 from app.publishers.kafka import NullPublisher, publisher_from_settings
 from app.store.device_record import DeviceRecord
 from app.store.disk import DiskPersistence
+from app.store.twin_redis import TwinRedisStore, twin_store_from_url
 
 
 class EventStore:
@@ -20,6 +21,7 @@ class EventStore:
         settings: Settings,
         *,
         publisher: Publisher | None = None,
+        twin: TwinRedisStore | None = None,
     ) -> None:
         self._max_events = settings.max_events if settings.max_events > 0 else 500
         self._disk = DiskPersistence(Path(settings.data_dir), enabled=settings.persist_files())
@@ -28,12 +30,13 @@ class EventStore:
         self._tokens: dict[str, str] = {}
         self._events: dict[str, list[Event]] = {}
         self._publisher = publisher or NullPublisher()
+        self._twin = twin if twin is not None else twin_store_from_url(settings.redis_url)
         self._load_from_disk()
 
     @classmethod
     def from_settings(cls, settings: Settings) -> EventStore:
         publisher = publisher_from_settings(settings.kafka_brokers, settings.kafka_topic)
-        return cls(settings, publisher=publisher)
+        return cls(settings, publisher=publisher, twin=twin_store_from_url(settings.redis_url))
 
     @property
     def kafka_enabled(self) -> bool:
@@ -83,27 +86,44 @@ class EventStore:
             return self._tokens.get(token)
 
     def add_event(self, event: Event) -> None:
+        self.add_events([event])
+
+    def add_events(self, events: list[Event]) -> None:
+        """Persist a batch under one lock and one devices.json rewrite."""
+        if not events:
+            return
+        to_publish: list[Event] = []
         with self._lock:
-            rec = self._devices.get(event.device_id)
-            if rec is None:
-                rec = DeviceRecord(device_id=event.device_id)
-                self._devices[event.device_id] = rec
+            for event in events:
+                rec = self._devices.get(event.device_id)
+                if rec is None:
+                    rec = DeviceRecord(device_id=event.device_id)
+                    self._devices[event.device_id] = rec
 
-            ts = event.ts or clock_mod.now_utc()
-            event.ts = ts
-            rec.last_seen_at = ts
-            if event.type == TYPE_CLIENT_DETAILS:
-                rec.last_details = dict(event.payload)
+                ts = event.ts or clock_mod.now_utc()
+                event.ts = ts
+                rec.last_seen_at = ts
+                if event.type == TYPE_CLIENT_DETAILS:
+                    rec.last_details = dict(event.payload)
 
-            events = self._events.setdefault(event.device_id, [])
-            events.append(event)
-            if len(events) > self._max_events:
-                events = events[-self._max_events :]
-            self._events[event.device_id] = events
+                device_events = self._events.setdefault(event.device_id, [])
+                device_events.append(event)
+                if len(device_events) > self._max_events:
+                    device_events = device_events[-self._max_events :]
+                self._events[event.device_id] = device_events
 
-            self._disk.append_event(event)
+                self._disk.append_event(event)
+                to_publish.append(event)
+            # One devices.json write per batch (was once per event — hung ingest under load).
             self._disk.save_devices(self._devices)
+        for event in to_publish:
             self._publisher.publish_event(event)
+        # Fail-open Redis twin update (dashboard live state / timeline).
+        by_device: dict[str, list[Event]] = {}
+        for event in to_publish:
+            by_device.setdefault(event.device_id, []).append(event)
+        for device_id, device_events in by_device.items():
+            self._twin.apply_events(device_id, device_events)
 
     def get_client(self, device_id: str, limit: int = 50) -> ClientView | None:
         with self._lock:

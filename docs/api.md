@@ -16,7 +16,7 @@ All telemetry uses one envelope:
 {
   "event_id": "evt_...",
   "device_id": "dev_...",
-  "type": "client_details | network_summary | action_summary | process_start | process_exit",
+  "type": "client_details | network_summary | network_connection | action_summary | process_start | process_exit | file_open | driver_load | service_install | registry_persistence | known_ai_app",
   "ts": "2026-07-03T21:00:00Z",
   "payload": {}
 }
@@ -197,6 +197,65 @@ EDR-lite process visibility.
 | `comm` | Short process name |
 | `executable` | Binary path or name |
 | `cmdline` | Command line (truncated; optional) |
+
+### `driver_load`
+
+Newly observed loaded driver (Windows) or kext (macOS).
+
+| Field | Description |
+|-------|-------------|
+| `name` | Driver / kext identifier |
+| `display_name` | Human-readable name when available |
+| `path` | Image / plist path when available |
+| `state` / `status` | Runtime state |
+| `service_type` | e.g. driver class or `kext` |
+
+### `service_install`
+
+Newly observed Windows service or macOS LaunchDaemon.
+
+| Field | Description |
+|-------|-------------|
+| `name` | Service name / launchd label |
+| `display_name` | Display name when available |
+| `path` | Binary or plist path |
+| `start_mode` | Start type / LaunchDaemon |
+| `account` | Run-as account / hive scope when available |
+
+### `known_ai_app`
+
+Known AI tools inventory upsert or removal (folded into Redis twin `known_ai_apps`). Covers GUI apps, CLI agents, local model runtimes, and IDE extensions matched from a verified catalog.
+
+| Field | Description |
+|-------|-------------|
+| `id` | Stable instance id (`product_id:path_key`) |
+| `product_id` | Catalog id (`cursor`, `claude`, `ollama`, `cline`, …) |
+| `product_name` | Display name |
+| `vendor` | Vendor name |
+| `category` | e.g. `code_editor`, `chat_client`, `cli_agent`, `local_model_runtime`, `ai_ide_extension`, `agentic_ide_extension` |
+| `confidence` | Identification confidence |
+| `confidence_reason` | Optional human-readable match explanation |
+| `installed` / `running` | Presence flags |
+| `path` / `version` / `bundle_id` | Install metadata |
+| `matched_evidence` / `failed_evidence` | Evidence keys from catalog matching |
+| `invocation_path` / `resolved_path` / `package_manager` / `package_identifier` | CLI / package identity when applicable |
+| `serving` / `exposure` / `listeners` / `models_available` / `model_format` / `runtime_version` / `local_clients` | Local model runtime fields when applicable |
+| `extension_id` / `host_ide_product_id` / `host_ide_path` / `profile` | IDE extension fields when applicable |
+| `enabled` / `active` | Extension enabled/active when known (`active` often unknown for shared hosts) |
+| `mcp_configured` / `local_model_product_id` | Extension capability / correlation hints |
+| `removed` | When true, delete this `id` from twin inventory |
+
+### `registry_persistence`
+
+New or changed persistence artifact: Windows Run/RunOnce or macOS LaunchAgent.
+
+| Field | Description |
+|-------|-------------|
+| `hive` | Registry hive or macOS scope (`user` / `system`) |
+| `key_path` | Registry key or LaunchAgents directory |
+| `value_name` | Value name / launchd label |
+| `value` | Command / program arguments |
+| `path` | Optional plist path (macOS) |
 
 ---
 
