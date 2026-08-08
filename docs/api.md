@@ -224,18 +224,25 @@ Newly observed Windows service or macOS LaunchDaemon.
 
 ### `known_ai_app`
 
-Known AI application inventory upsert or removal (folded into Redis twin `known_ai_apps`).
+Known AI tools inventory upsert or removal (folded into Redis twin `known_ai_apps`). Covers GUI apps, CLI agents, local model runtimes, and IDE extensions matched from a verified catalog.
 
 | Field | Description |
 |-------|-------------|
 | `id` | Stable instance id (`product_id:path_key`) |
-| `product_id` | Catalog id (`cursor`, `claude`, …) |
+| `product_id` | Catalog id (`cursor`, `claude`, `ollama`, `cline`, …) |
 | `product_name` | Display name |
 | `vendor` | Vendor name |
-| `category` | e.g. `code_editor`, `chat_client` |
+| `category` | e.g. `code_editor`, `chat_client`, `cli_agent`, `local_model_runtime`, `ai_ide_extension`, `agentic_ide_extension` |
 | `confidence` | Identification confidence |
+| `confidence_reason` | Optional human-readable match explanation |
 | `installed` / `running` | Presence flags |
 | `path` / `version` / `bundle_id` | Install metadata |
+| `matched_evidence` / `failed_evidence` | Evidence keys from catalog matching |
+| `invocation_path` / `resolved_path` / `package_manager` / `package_identifier` | CLI / package identity when applicable |
+| `serving` / `exposure` / `listeners` / `models_available` / `model_format` / `runtime_version` / `local_clients` | Local model runtime fields when applicable |
+| `extension_id` / `host_ide_product_id` / `host_ide_path` / `profile` | IDE extension fields when applicable |
+| `enabled` / `active` | Extension enabled/active when known (`active` often unknown for shared hosts) |
+| `mcp_configured` / `local_model_product_id` | Extension capability / correlation hints |
 | `removed` | When true, delete this `id` from twin inventory |
 
 ### `registry_persistence`
