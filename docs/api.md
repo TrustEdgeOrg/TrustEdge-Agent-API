@@ -16,7 +16,7 @@ All telemetry uses one envelope:
 {
   "event_id": "evt_...",
   "device_id": "dev_...",
-  "type": "client_details | network_summary | action_summary | process_start | process_exit | driver_load | service_install | registry_persistence",
+  "type": "client_details | network_summary | network_connection | action_summary | process_start | process_exit | file_open | driver_load | service_install | registry_persistence | known_ai_app",
   "ts": "2026-07-03T21:00:00Z",
   "payload": {}
 }
@@ -221,6 +221,22 @@ Newly observed Windows service or macOS LaunchDaemon.
 | `path` | Binary or plist path |
 | `start_mode` | Start type / LaunchDaemon |
 | `account` | Run-as account / hive scope when available |
+
+### `known_ai_app`
+
+Known AI application inventory upsert or removal (folded into Redis twin `known_ai_apps`).
+
+| Field | Description |
+|-------|-------------|
+| `id` | Stable instance id (`product_id:path_key`) |
+| `product_id` | Catalog id (`cursor`, `claude`, …) |
+| `product_name` | Display name |
+| `vendor` | Vendor name |
+| `category` | e.g. `code_editor`, `chat_client` |
+| `confidence` | Identification confidence |
+| `installed` / `running` | Presence flags |
+| `path` / `version` / `bundle_id` | Install metadata |
+| `removed` | When true, delete this `id` from twin inventory |
 
 ### `registry_persistence`
 
