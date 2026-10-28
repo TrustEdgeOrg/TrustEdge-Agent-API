@@ -19,10 +19,15 @@ async def lifespan(app: FastAPI):
     store = EventStore.from_settings(settings)
     app.state.store = store
     kafka_note = "on" if store.kafka_enabled else "off"
+    if store.shared_creds_enabled:
+        creds_note = "postgres+redis" if store.device_creds_cache_enabled else "postgres"
+    else:
+        creds_note = "local"
     LOG.info(
-        "listening (disk=%s kafka=%s)",
+        "listening (disk=%s kafka=%s device_creds=%s)",
         settings.persist_files(),
         kafka_note,
+        creds_note,
     )
     try:
         yield

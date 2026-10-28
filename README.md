@@ -33,8 +33,9 @@ Built for local demos and AWS deploy: Python **3.12+**, FastAPI, optional stream
 4. **Persist** — keep devices / events on disk (or memory-only).  
 5. **Stream** — optional publish to Kafka / Redpanda.  
 6. **Live twin** — optional Redis device state when `REDIS_URL` is set (fail-open).  
-7. **Detection** — TrustEdge rules, behavior, and AI activity analyze the stream.  
-8. **Alert** — operators get notified in the TrustEdge UI.
+7. **Device auth (HA)** — dedicated Postgres `token_hash → device_id` (`TRUSTEDGE_AGENT_DEVICE_CREDS_DATABASE_URL`); optional auth-cache Redis only at high scale.  
+8. **Detection** — TrustEdge rules, behavior, and AI activity analyze the stream.  
+9. **Alert** — operators get notified in the TrustEdge UI.
 
 Want the schemas? See [Docs hub](docs/README.md) · [API reference](docs/api.md) · [Configuration](docs/configuration.md).
 
@@ -49,7 +50,8 @@ Want the schemas? See [Docs hub](docs/README.md) · [API reference](docs/api.md)
 | **Compression** | Accepts `Content-Encoding: zstd` with plain JSON fallback |
 | **Persistence** | `devices.json` + `events.jsonl` under a configurable data dir |
 | **Streaming** | Kafka publish when `KAFKA_BROKERS` is set; no-op otherwise |
-| **Live twin** | Optional Redis twin (`REDIS_URL`) for live device presence / state |
+| **Live twin** | Optional Redis twin (`REDIS_URL`) for live device presence / state (fail-open) |
+| **Device auth HA** | Dedicated Postgres for credentials (`TRUSTEDGE_AGENT_DEVICE_CREDS_DATABASE_URL`); optional Redis cache |
 | **TrustEdge registry** | Fail-open upsert to `/internal/agents/upsert` on register and ingest |
 | **Safety** | `TRUSTEDGE_AGENT_PRODUCTION=1` requires enroll token |
 | **Deploy** | Docker image → ECR → EC2 via GitHub Actions |

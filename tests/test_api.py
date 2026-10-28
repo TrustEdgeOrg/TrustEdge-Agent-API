@@ -37,3 +37,57 @@ def test_register_and_events_flow(api_client: TestClient) -> None:
     client_view = api_client.get(f"/v1/clients/{device_id}")
     assert client_view.status_code == 200
     assert client_view.json()["device_id"] == device_id
+
+
+def test_rotate_and_revoke_device(api_client: TestClient, monkeypatch) -> None:
+    monkeypatch.setenv("TRUSTEDGE_AGENT_ENROLL_TOKEN", "enroll-secret")
+    # Recreate app so settings pick up enroll token.
+    from app.config import get_settings
+    from app.main import create_app
+
+    get_settings.cache_clear()
+    with TestClient(create_app()) as client:
+        reg = client.post(
+            "/v1/register",
+            headers={"Authorization": "Bearer enroll-secret"},
+            json={"hostname": "rotate-box"},
+        )
+        assert reg.status_code == 200
+        token = reg.json()["device_token"]
+        device_id = reg.json()["device_id"]
+
+        rotated = client.post(
+            "/v1/devices/rotate",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert rotated.status_code == 200
+        new_token = rotated.json()["device_token"]
+        assert new_token != token
+
+        old = client.post(
+            "/v1/events",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"type": "client_details", "payload": {"hostname": "rotate-box"}},
+        )
+        assert old.status_code == 401
+
+        ok = client.post(
+            "/v1/events",
+            headers={"Authorization": f"Bearer {new_token}"},
+            json={"type": "client_details", "payload": {"hostname": "rotate-box"}},
+        )
+        assert ok.status_code == 202
+
+        revoked = client.post(
+            f"/v1/devices/{device_id}/revoke",
+            headers={"Authorization": "Bearer enroll-secret"},
+        )
+        assert revoked.status_code == 204
+
+        after = client.post(
+            "/v1/events",
+            headers={"Authorization": f"Bearer {new_token}"},
+            json={"type": "client_details", "payload": {"hostname": "rotate-box"}},
+        )
+        assert after.status_code == 401
+    get_settings.cache_clear()

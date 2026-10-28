@@ -25,6 +25,7 @@ TYPE_DRIVER_LOAD = "driver_load"
 TYPE_SERVICE_INSTALL = "service_install"
 TYPE_REGISTRY_PERSIST = "registry_persistence"
 TYPE_KNOWN_AI_APP = "known_ai_app"
+TYPE_AI_AGENT_ACTION = "ai_agent_action"
 
 ALLOWED_EVENT_TYPES = frozenset(
     {
@@ -39,6 +40,7 @@ ALLOWED_EVENT_TYPES = frozenset(
         TYPE_SERVICE_INSTALL,
         TYPE_REGISTRY_PERSIST,
         TYPE_KNOWN_AI_APP,
+        TYPE_AI_AGENT_ACTION,
     }
 )
 

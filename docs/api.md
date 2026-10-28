@@ -16,7 +16,7 @@ All telemetry uses one envelope:
 {
   "event_id": "evt_...",
   "device_id": "dev_...",
-  "type": "client_details | network_summary | network_connection | action_summary | process_start | process_exit | file_open | driver_load | service_install | registry_persistence | known_ai_app",
+  "type": "client_details | network_summary | network_connection | action_summary | process_start | process_exit | file_open | driver_load | service_install | registry_persistence | known_ai_app | ai_agent_action",
   "ts": "2026-07-03T21:00:00Z",
   "payload": {}
 }
@@ -61,6 +61,18 @@ Register a client (device). When `TRUSTEDGE_AGENT_ENROLL_TOKEN` is set (required
   "device_token": "tok_..."
 }
 ```
+
+Re-registration for an existing `device_id` **rotates** the device token. Only the token hash is stored at rest.
+
+### <img src="assets/icons/lock.svg" width="18" height="18" align="absmiddle" alt="" /> `POST /v1/devices/rotate`
+
+Rotate the caller's device token. Requires `Authorization: Bearer <current_device_token>`.
+
+**Response:** `200 OK` with a new `{ "device_id", "device_token" }`. Previous token stops working.
+
+### <img src="assets/icons/lock.svg" width="18" height="18" align="absmiddle" alt="" /> `POST /v1/devices/{device_id}/revoke`
+
+Revoke upload credentials for a device. When `TRUSTEDGE_AGENT_ENROLL_TOKEN` is set, requires that enroll bearer. Returns `204` on success, `404` if unknown.
 
 ### <img src="assets/icons/collection.svg" width="18" height="18" align="absmiddle" alt="" /> `POST /v1/events`
 
@@ -152,6 +164,8 @@ After a successful `POST /v1/events` (and similarly on register where noted):
 | Disk | `TRUSTEDGE_AGENT_PERSIST_FILES` not `0` | Append to `events.jsonl`; update `devices.json` |
 | Kafka | `KAFKA_BROKERS` set | Publish each accepted event to `KAFKA_TOPIC` |
 | Redis twin | `REDIS_URL` set | Fail-open update of `twin:devices`, `twin:device:{id}:latest`, events ZSET (cap 200) |
+| Device creds | `TRUSTEDGE_AGENT_DEVICE_CREDS_DATABASE_URL` | Dedicated Agent-API Postgres `token_hash → device_id` |
+| Auth cache | `TRUSTEDGE_AGENT_DEVICE_CREDS_REDIS_URL` | Optional; empty = Postgres-only (recommended default) |
 | TrustEdge registry | `TRUSTEDGE_BACKEND_URL` set | Fail-open background `POST /internal/agents/upsert` (register + ingest) |
 
 Twin “latest” folds `client_details`, `network_summary`, `action_summary`, and `known_ai_apps`. Other event types still land in the events ZSET.
