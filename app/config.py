@@ -18,7 +18,7 @@ def _env_bool(primary: str) -> bool:
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(extra="ignore")
+    model_config = SettingsConfigDict(extra="ignore", populate_by_name=True)
 
     listen: str = Field(default=":8080", validation_alias="TRUSTEDGE_AGENT_LISTEN")
     enroll_token: str = Field(default="", validation_alias="TRUSTEDGE_AGENT_ENROLL_TOKEN")
@@ -33,6 +33,22 @@ class Settings(BaseSettings):
     trustedge_ingest_token: str = Field(default="", validation_alias="TRUSTEDGE_INGEST_TOKEN")
     trustedge_upsert_timeout_sec: float = Field(
         default=5.0, validation_alias="TRUSTEDGE_UPSERT_TIMEOUT_SEC"
+    )
+    # Optional HMAC pepper for device-token digests (empty = plain SHA-256).
+    device_token_pepper: str = Field(default="", validation_alias="TRUSTEDGE_DEVICE_TOKEN_PEPPER")
+    # 0 disables expiry. When set, register/rotate stamps token_expires_at.
+    device_token_ttl_sec: int = Field(default=0, validation_alias="TRUSTEDGE_DEVICE_TOKEN_TTL_SEC")
+    # Shared Postgres URL for token_hash → device_id (multi-replica). Empty = in-memory/local.
+    device_creds_database_url: str = Field(
+        default="", validation_alias="TRUSTEDGE_AGENT_DEVICE_CREDS_DATABASE_URL"
+    )
+    # Dedicated Redis for auth cache (do not share with twin REDIS_URL).
+    device_creds_redis_url: str = Field(
+        default="", validation_alias="TRUSTEDGE_AGENT_DEVICE_CREDS_REDIS_URL"
+    )
+    # TTL for cached token_hash → device_id entries (seconds).
+    device_creds_cache_ttl_sec: int = Field(
+        default=300, validation_alias="TRUSTEDGE_AGENT_DEVICE_CREDS_CACHE_TTL_SEC"
     )
 
     @model_validator(mode="before")
@@ -78,6 +94,39 @@ class Settings(BaseSettings):
         if "persist_files_override" not in out:
             if "TRUSTEDGE_AGENT_PERSIST_FILES" in os.environ:
                 out["persist_files_override"] = os.environ["TRUSTEDGE_AGENT_PERSIST_FILES"]
+        if "device_token_pepper" not in out and "TRUSTEDGE_DEVICE_TOKEN_PEPPER" not in out:
+            pepper = _env("TRUSTEDGE_DEVICE_TOKEN_PEPPER")
+            out["device_token_pepper"] = pepper
+            out["TRUSTEDGE_DEVICE_TOKEN_PEPPER"] = pepper
+        if "device_token_ttl_sec" not in out and "TRUSTEDGE_DEVICE_TOKEN_TTL_SEC" not in out:
+            raw_ttl = _env("TRUSTEDGE_DEVICE_TOKEN_TTL_SEC", "0")
+            try:
+                out["device_token_ttl_sec"] = int(raw_ttl)
+            except ValueError:
+                out["device_token_ttl_sec"] = 0
+        if (
+            "device_creds_database_url" not in out
+            and "TRUSTEDGE_AGENT_DEVICE_CREDS_DATABASE_URL" not in out
+        ):
+            creds_url = _env("TRUSTEDGE_AGENT_DEVICE_CREDS_DATABASE_URL")
+            out["device_creds_database_url"] = creds_url
+            out["TRUSTEDGE_AGENT_DEVICE_CREDS_DATABASE_URL"] = creds_url
+        if (
+            "device_creds_redis_url" not in out
+            and "TRUSTEDGE_AGENT_DEVICE_CREDS_REDIS_URL" not in out
+        ):
+            creds_redis = _env("TRUSTEDGE_AGENT_DEVICE_CREDS_REDIS_URL")
+            out["device_creds_redis_url"] = creds_redis
+            out["TRUSTEDGE_AGENT_DEVICE_CREDS_REDIS_URL"] = creds_redis
+        if (
+            "device_creds_cache_ttl_sec" not in out
+            and "TRUSTEDGE_AGENT_DEVICE_CREDS_CACHE_TTL_SEC" not in out
+        ):
+            raw_cache_ttl = _env("TRUSTEDGE_AGENT_DEVICE_CREDS_CACHE_TTL_SEC", "300")
+            try:
+                out["device_creds_cache_ttl_sec"] = int(raw_cache_ttl)
+            except ValueError:
+                out["device_creds_cache_ttl_sec"] = 300
         return out
 
     @field_validator("production", mode="before")
